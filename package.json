@@ -1,0 +1,42 @@
+{
+  "//1": "describes your app and its dependencies",
+  "//2": "https://docs.npmjs.com/files/package.json",
+  "//3": "updating this file will download and update your packages",
+  "name": "my-glitch-app",
+  "version": "0.0.1",
+  "description": "Used to post the daily garfield comic",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.16.4",
+    "got": "^9.6.0",
+    "redditor": "^1.1.1",
+    "forever-monitor": "^1.7.1",
+    "request": "^2.88.0",
+    "pump": "^3.0.0",
+    "snoocore": "^3.3.1",
+    "http": "^0.0.0",
+    "twit": "^2.2.11",
+    "node-base64-image": "^1.0.6",
+    "connect-timeout": "^1.9.0",
+    "fs": "^0.0.2",
+    "discord.js": "^11.5.1",
+    "flatted": "^2.0.1",
+    "ansi_up": "^4.0.2"
+  },
+  "engines": {
+    "node": "8.x"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LiquidZulu/glitch"
+  },
+  "license": "MIT",
+  "keywords": [
+    "node",
+    "glitch",
+    "express"
+  ]
+}
