@@ -1,0 +1,15 @@
+{
+  "name": "sromg-api",
+  "version": "2.1.0",
+  "description": "A scraper based api for SRoMG comics and authors",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "LiquidZulu",
+  "license": "Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)",
+  "dependencies": {
+    "got": "^9.6.0",
+    "jsdom": "^15.1.1"
+  }
+}
