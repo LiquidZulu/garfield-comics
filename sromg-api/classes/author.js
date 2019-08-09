@@ -9,7 +9,7 @@ class Author {
      * 
      * @constructor
      * @author      LiquidZulu
-     * @param       {Object}document - DOM object for author page
+     * @param       {Object}document - DOM object for author page, set document.authNo if you want an accurate author number
      * @throws                       - Will throw an exception if one of the links in the comic list is more than 128 characters long before finding the comic
      */
 
@@ -23,7 +23,7 @@ class Author {
         /**
          * @type     {Number}
          */
-        this.number = ARGS.n;
+        this.number = Number(document.authNo);
 
         /**
          * @type     {String}

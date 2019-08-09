@@ -15,7 +15,23 @@ class Comic {
     constructor(document){
         
         let comic = document.getElementsByTagName('IMG')[1];
-        let author = document.getElementsByTagName('A')[20];
+        let author = (() => {
+            if(document.getElementsByTagName('A')[20].href.substring(0, 28) == '/garfield/author.php?author='){
+                return document.getElementsByTagName('A')[20]
+            }
+            else{
+                for(let a of document.getElementsByTagName('A')){
+                    if(a.href.substring(0, 28) == '/garfield/author.php?author='){
+                        return a
+                    }
+                }
+            }
+            return {
+                innerHTML: undefined,
+                href: ''
+            }
+        })();
+
         let ps = document.getElementsByTagName('P');
         let authorWritesI = (() => {
             for(var i=0; i<ps.length; i++){
@@ -40,7 +56,7 @@ class Comic {
          * 
          * @type     {Number}
          */
-        this.number = ARGS.n
+        this.number = Number(comic.src.split('comics/')[1].split('.')[0])
 
         /**
          * Data on the actual image for the comic
@@ -65,7 +81,7 @@ class Comic {
          */
         this.author = {
             name: author.innerHTML,
-            number: author.href.split('=')[1]
+            number: Number(author.href.split('=')[1])
         }
 
         /**
@@ -73,7 +89,7 @@ class Comic {
          * 
          * @type     {String}
          */
-        this.trascription = document.getElementsByTagName('P')[authorWritesI-1].innerHTML
+        this.transcription = document.getElementsByTagName('P')[authorWritesI-1].innerHTML
 
         /**
          * The authors notes on the comic WITH ALL HTML TAGS STILL INCLUDED, you may want to translate this to markdown applicable to your solution
@@ -168,7 +184,7 @@ class Comic {
      */
 
     get getTranscription(){
-        return this.trascription;
+        return this.transcription;
     }
 
 

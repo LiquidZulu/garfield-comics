@@ -4,101 +4,44 @@
 
 
 
-const fs = require('fs');
-/*const channels = {
-  private: '373438023511048192',
-  holyTexts: '339155182875050004',
-  SRoMG: '445210673777999882'
-}*/
+const fs            = require('fs');
+var channels        = require('./channels.json');
+const Discord       = require('discord.js');
+const config        = require('./config.js');
+const sromg_api     = require('./sromg-api');
+const META          = new sromg_api.META();
+const FLAGS         = sromg_api.FLAGS;
+const { JSDOM }     = require('jsdom');
+const client        = new Discord.Client();
+const token         = process.env.TOKEN;
+var turndown        = require('turndown')
+ 
 
-var channels = require('./channels.json');
-
-// Import node modules
-const Discord = require('discord.js');
-const config = require('./config.js');
-
-// Create an instance of a Discord client
-const client = new Discord.Client();
-
-// The token of your bot - https://discordapp.com/developers/applications/me
-const token = process.env.TOKEN;
-console.log('before login')
+// login
 client.login(token);
-console.log('after login')
+var ts = new turndown({
+  hr: '\n',
+  bulletListMarker: '-',
+  codeBlockStyle: 'fenced',
+  fence: '```',
+  emDelimiter: '*'
+})
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function getMeta(page){// /garfield/author.php?author=
-  
-  for (var i=0; i<page.length; i++){
-    if (page.substring(i,i+28) == '/garfield/author.php?author='){
-      var url = "http://www.mezzacotta.net/garfield/author.php?author=";
-      var x=i+29;
-      do {
-        var authID = page.substring(i+28,x)
-        x++;
-      }while (page.substring(x,x+1) != '>');
-      x = x + 1;
-      var y = x+1;
-      do {
-        var name = page.substring(x,y)
-        y++;
-      }while (page.substring(y,y+1) != '/');
-      var author = {url: url + authID, name: name}
-    }
-  }
-  
-  for (var i=0; i<page.length; i++){
-    
-    if (page.substring(i, i+32) == '<p><b>The author writes:</b></p>'){//<p><b>The author writes:</b></p> = 32 chars
-      
-      var cont = false;
-      var x = i+35;
-      while (cont!==true){
-        if (page.substring(x, x+4) == '</p>'){cont=true;}
-        x++;
-      }
-      var desc = page.substring(i+36, x-1);
-    }
-  }
-  
-  
-  var lines = page.split('\n')
-  var title = lines[20].substring(4, lines[20].length - 5);
-  
-  for(var i=0; i<lines.length; i++){
-    if(lines[i].substring(0, ('Original Strip').length).toUpperCase() === 'ORIGINAL STRIP'){var originalStripLine = i;}
-  }
-  
-  if(originalStripLine){var strips = lines[originalStripLine].substring(('Original Strips:').length);} // 'Original Strips:' used as theres a space between Original Strip(s): and links so it will work for singular original and multiple originals.
-  else{var strips = null}
-  
-  console.log(`STRIPS: ${strips}\n/\</g.test(strips): ${/\</g.test(strips)}\n!/\>/g.test(strips): ${!/\>/g.test(strips)}`);
-  
-  if(/\</g.test(strips) && !/\>/g.test(strips)){
-    strips = '';
-    var currentLine = originalStripLine;
-    while(!/<\/p>/.test(lines[currentLine])){
-      console.log(`testing: ${lines[currentLine]}`)
-      currentLine++
-    }
-    
-    for(var j=originalStripLine; j < currentLine + 1; j++){
-      strips += lines[j]
-    }
-    strips.trim()
-    strips = strips.substring(('Original Strips:').length, strips.length - ("</p>").length)
-    console.log(`\n\n${strips}\n\n`)
-  }
-  
-  const META = {
-    desc: parseTags(desc),
-    author: author,
-    title: parseTags(title),
-    strips: parseTags(strips)
-  }
-  return META;
+/**
+ * wrapper for got calls, supports promises and functions
+ * 
+ * @author LiquidZulu, freenode
+ * @param  {String}link  - The URL to read
+ * @param  {Function}_cb - optional callback
+ */
+
+function readPage(link, _cb) {
+  const prom = got(link);
+  if(_cb) prom.then(_cb) 
+  else return prom;
 }
+
 
 function getMonthString(month){if(month<10){month = '0' + month;}; return month}
 function getDayString(day){if(day<10){day = '0' + day;}; return day}
@@ -134,7 +77,6 @@ function RandInt(low, high, seed){
 	var n = Math.round(n);
 	
 	return n;
-	
 }
 
 function seed(){
@@ -182,106 +124,6 @@ function SendComic(message, guild){
   }
 }
 
-function parseTags(str){
-  
-  if(typeof str !== typeof ""){
-    return null
-  }
-  
-  var newStr = '';
-  var parsing = false;
-  var reParse = false;
-  
-  for (var i=0; i<str.length; i++){
-    
-    var chr = str.substring(i, i+1);
-    
-    if(chr == '<'){
-      
-      var x = 0;
-      while(true){
-        x++;
-        if(str.substring(i + x, i+1 + x) == '>'){break}
-      }
-      
-      var tag = str.substring(i+1, i+x).trim().split(' ');// +1 on start and -1 on end to remove < & >
-      i += x;
-      if(tag[0].toLowerCase() == 'a'){
-        var link = tag[1].substring(6, tag[1].length - 1); // removes `href="` & `"`
-        var linkTextStart = i+1;
-        parsing = true;
-      }else if(tag[0].toLowerCase() == 'cite' && !parsing){newStr += '*'}else if(tag[0].toLowerCase() == '/cite' && !parsing){newStr += '*'}else if(tag[0].toLowerCase() == 'cite'){reParse = true}else if(tag[0].toLowerCase() == '/cite'){reParse = true}
-      else if(tag[0].toLowerCase() == '/a'){
-        var linkText = str.substring(linkTextStart, i-3);
-        if(link.substring(0,1) === '"' || link.substring(0,1) === "'") link = link.substring(1)
-        newStr += '[' + linkText + ']' + '(' + link + ')';
-        parsing = false;
-      }
-    }else if(parsing){
-    }else{newStr += chr}
-  }
-  
-  if(reParse){newStr = parseTags(newStr);}
-  
-  return newStr;
-}
-
-function SendSRoMG(message, date, parseVar, guild){
-  
-  if(message == null){
-    channels = require('./channels.json');
-    var channel = null;
-
-    for(var g of channels.SRoMG){
-      if(guild === g[0]){
-        channel = client.channels.get(g[1]);
-      }
-    }
-
-    if(channel == null){
-      return;
-    }
-  }
-  
-  try{
-    if(!parseVar){var SRoMG_URL = genURL(new Date(date.getTime()/* - 1000*60*60*11*/));}
-    else{var SRoMG_URL = {
-      SRoMG: ("http://www.mezzacotta.net/garfield/?comic=" + date),
-      SRoMG_IMG: ('http://www.mezzacotta.net/garfield/comics/' + date + '.png')
-    }}
-    var desc = 'Be sure to check out the daily SRoMG comic';
-    var url = SRoMG_URL.SRoMG_IMG;
-    var link = SRoMG_URL.SRoMG;
-    
-    readPage(link,   (result) => {
-      try{
-        var meta = getMeta(result.body)
-        if(message == null){channel.send(
-          EmbedComic(message, desc, url, link, meta)
-        );}else{
-          if(!parseVar){desc = 'The daily SRoMG comic for ' + date.getFullYear() + '-' + getMonthString(date.getMonth() + 1) + '-' + getDayString(date.getDate()) + ' brought to you by LiquidZulu.';}
-          else{desc = 'SRoMG comic ' + date + ' brought to you by LiquidZulu'} // note improve this, you were lazy by not extracting date from SRoMG comic No., you already did the work in genURL()
-          message.channel.send(
-            EmbedComic(message, desc, url, link, meta)
-          );}
-    
-        if(!message){
-          if(guild === undefined){
-            try{
-              var d = new Date();
-              var day = getDayString(d.getDate());
-              var month = getMonthString(d.getMonth() + 1);
-              var year = d.getFullYear();
-              const twitter = require('./twitter.js');
-              const twit = twitter;
-              twit.postImg(url, `${desc} for ${year}-${month}-${day}\nMade by ${meta.author.name}, ${meta.author.url}\nLicenced under Creative Commons Attribution-Noncommercial-Share Alike 3.0 Unported Licence`, `Square Root of Minus Garfield Comic for ${year}-${month}-${day}`);
-            }catch(e){console.log(e)}
-          }
-        }
-      }catch(e){console.log(e)}
-    });
-  }catch(e){console.log(e)}
-}
 
 function CheckTime(comic){
   channels = require('./channels.json');
@@ -301,13 +143,6 @@ function CheckTime(comic){
   }
 }
 
-function resolveAfter1Hour(x) {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve(x);
-    }, 1000*60*60);
-  });
-}
 
 setInterval(async function ComicTimer() {
   
@@ -339,20 +174,6 @@ setInterval(async function ComicTimer() {
   }
 },60000)
 
-function logMsg(message){
-	console.log('\n//////////////////////////////////////\n');
-	console.log('-----------RECEIVED MESSAGE-----------');
-	console.log('CHANNEL ID: ' + message.channel.id);
-  console.log('CHANNEL NAME: ' + message.channel.name);
-	console.log('MESSAGE ID: ' + message.id);
-	console.log('SENDER: ' + message.author);
-	console.log('CONTENT: ' + message.content);
-	console.log('CREATED AT: ' + message.createdAt);
-	console.log('EMBEDS: ' + message.embeds);
-	console.log('TYPE: ' + message.type);
-	console.log('WEBHOOK ID (IF APPLICABLE): ' + message.webhookID);
-	console.log('\n//////////////////////////////////////\n\n');
-};
 
 function EmbedComic(message, desc, url, link, meta){
   
@@ -372,9 +193,6 @@ function EmbedComic(message, desc, url, link, meta){
     
     return embed;
   }else{
-    console.log('SROMG EMBED COMIC')
-    var date = new Date();
-    //var SRoMG_URL = genURL(new Date(date.getTime() - 1000*60*60*7));
     const SRoMG_Links = {
       IMG: url,
       PAGE: link
@@ -402,10 +220,82 @@ function EmbedComic(message, desc, url, link, meta){
   }
 }
 
-function regex(str, rule) {
-  return new RegExp("^" + rule.split("*").join(".*") + "$").test(str);
+
+function EmbedSRoMG(ARGS){
+
+  const comic = ARGS.comic
+
+  const SRoMG_Links = {
+    IMG: comic.image.src,
+    PAGE: `http://www.mezzacotta.net/garfield/?comic=${comic.number}`
+  }
+  
+  const embed = new Discord.RichEmbed()
+    .setTitle((() => { if(typeof ARGS["Title"] === typeof ""){return ARGS["Title"]}else return `No. ${comic.number}: ${comic.name}`})())
+    .setAuthor((() => { if(typeof ARGS["Author"] === typeof ""){return ARGS["Author"]}else return `By ${comic.author.name}`})())
+    .setColor(0xFF9900)
+    .setDescription((() => { if(typeof ARGS["Description"] === typeof ""){return ARGS["Description"]}else return `Be sure to check out the daily SRoMG comic`})())
+    .setTimestamp()
+    .setImage(SRoMG_Links.IMG)
+    .setFooter('Made by LiquidZulu  //  Licenced under Creative Commons Attribution-Noncommercial-Share Alike 3.0 Unported Licence ')
+    .setURL(SRoMG_Links.PAGE)
+    .addField('\nAuthor URL:', `http://www.mezzacotta.net/garfield/author.php?author=${comic.author.number}`)
+    .addField('\nThe Author Writes:', ts.turndown(comic.authorWrites))
+    .addField('\nTranscription:', ts.turndown(comic.transcription))
+    .addField('\nOriginal Strip(s):', (() => {
+      let strips = '';
+      for(let strip of comic.originalStrips){
+        strips += `[${strip.strip}](${strip.href}) `
+      }
+      if(strips == ''){
+        return "No original stips found"
+      }
+      return strips
+    })());
+  
+  return embed;
 }
 
+
+function dateFormatter(cmsg){
+  
+  var date = cmsg[1];
+  var format = cmsg[2];
+  
+  var dmyACT = cmsg[1].split('-')
+  
+  try{var dmyFORM = cmsg[2].split('-'); var FORM = 'FORMAT'}catch(e){var FORM = 'NO_FORMAT'}
+  
+  if (cmsg.length == 2){var year = dmyACT[0]; var month = dmyACT[1]; var day = dmyACT[2]}
+  
+  if(FORM == 'FORMAT'){
+  
+    if(dmyFORM[0].substring(0,1).toUpperCase() == 'Y' && dmyFORM[1].substring(0,1).toUpperCase() == 'M' && dmyFORM[2].substring(0,1).toUpperCase() == 'D'){var year = dmyACT[0]; var month = dmyACT[1]; var day = dmyACT[2]}
+    if(dmyFORM[0].substring(0,1).toUpperCase() == 'M' && dmyFORM[1].substring(0,1).toUpperCase() == 'D' && dmyFORM[2].substring(0,1).toUpperCase() == 'Y'){var year = dmyACT[2]; var month = dmyACT[0]; var day = dmyACT[1]}
+    if(dmyFORM[0].substring(0,1).toUpperCase() == 'D' && dmyFORM[1].substring(0,1).toUpperCase() == 'Y' && dmyFORM[2].substring(0,1).toUpperCase() == 'M'){var year = dmyACT[1]; var month = dmyACT[2]; var day = dmyACT[0]}
+  
+    if(dmyFORM[0].substring(0,1).toUpperCase() == 'D' && dmyFORM[1].substring(0,1).toUpperCase() == 'M' && dmyFORM[2].substring(0,1).toUpperCase() == 'Y'){var year = dmyACT[2]; var month = dmyACT[1]; var day = dmyACT[0]}
+    if(dmyFORM[0].substring(0,1).toUpperCase() == 'M' && dmyFORM[1].substring(0,1).toUpperCase() == 'Y' && dmyFORM[2].substring(0,1).toUpperCase() == 'D'){var year = dmyACT[0]; var month = dmyACT[2]; var day = dmyACT[1]}
+    if(dmyFORM[0].substring(0,1).toUpperCase() == 'Y' && dmyFORM[1].substring(0,1).toUpperCase() == 'D' && dmyFORM[2].substring(0,1).toUpperCase() == 'M'){var year = dmyACT[1]; var month = dmyACT[0]; var day = dmyACT[2]}
+  }
+  console.log(year + '-' + getMonthString(month) + '-' + getDayString(day));
+  return new Date(year + '-' + getMonthString(month) + '-' + getDayString(day));
+}
+
+
+function GetSRoMG_Number(date){
+  return ((+ date) - 1242691200000)/86400000
+}
+
+// javascript:alert(((+ new Date('2017-02-14')) - 1226750400)/86400000)
+/**
+
+2828 = (date - n)/86400000
+244339200000‬ = date - n
+n = date - 244339200000‬
+
+244339200000
+*/
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -424,13 +314,7 @@ client.on('ready', () => {
     if (currentIndex < activities.arr.length - 1) currentIndex ++; else currentIndex = 0;
   }, activities.time)
 })
-console.log('after ready')
 
-async function readPage(link, _callback){
-  const got = require('got');
-  var result = await got(link);
-  _callback(result);
-}
 
 const HGrunt = {
   
@@ -455,334 +339,287 @@ const HGrunt = {
 }
 
 
-// Create an event listener for messages
+/**
+ * Listens for messages -----------------------------------------------------
+ */
+
 client.on('message', async message => {
   
-  
+
+  if (message.author.id == client.user.id) return;
+
   switch(message.channel.type){
       
-    case 'text':
-    
-      if (message.author.id == client.user.id) return;
-      //logMsg(message);
+    case 'text':{
+      {
+        try{
+
+          if (message.content.toUpperCase() === 'SHOW COMIC' || message.content.toUpperCase() === config.prefix + 'SHOWCOMIC'|| message.content.toUpperCase() === config.SRoMG_prefix + 'SHOWCOMIC' || message.content.toUpperCase() === 'G.TODAY' || HGrunt.test.today(message)) {
       
-      try{
-        if (message.content.toUpperCase() === 'SHOW COMIC' || message.content.toUpperCase() === config.prefix + 'SHOWCOMIC'|| message.content.toUpperCase() === config.SRoMG_prefix + 'SHOWCOMIC' || message.content.toUpperCase() === 'G.TODAY' || HGrunt.test.today(message)) {
-    
-          var date = new Date();
-          var desc = 'The Daily Garfield Comic for ' + date.getFullYear() + '-' + getMonthString(date.getMonth() + 1) + '-' + getDayString(date.getDate()) + ' brought to you by LiquidZulu.';
-          var comicEmbed = EmbedComic(message,desc,genURL(new Date(date.getTime() - 1000*60*60*4.5)).comic,genURL(new Date(date.getTime() - 1000*60*60*4.5)).comic); //      message, desc, url, link, author
-          
-          message.channel.send(comicEmbed);
-    
-          return;
-        }else if (message.content.toUpperCase() === 'SHOW SROMG' || message.content.toUpperCase() === config.prefix + 'SHOWSROMG') {
-          var date = new Date();
-          var date = new Date(new Date(date.getTime() - 1000*60*60*11)); 
-          var desc = 'The Daily SRoMG Comic for ' + date.getFullYear() + '-' + getMonthString(date.getMonth() + 1) + '-' + getDayString(date.getDate()) + ' brought to you by LiquidZulu.';
-          var url = genURL(date).SRoMG_IMG;
-          var link = genURL(date).SRoMG;
-          console.log(`${url}  ${link}`)
-    
-          readPage(link,   (result) => {
-            console.log('readPage at SHOW SROMG')
-            var meta = getMeta(result.body)
-            console.log(`${message} ${desc} ${url} ${link} ${meta}`)
-            var comicEmbed = EmbedComic(message, desc, url, link, meta);
-            console.log(`comicEmbed: ${comicEmbed}`)
+            var date = new Date();
+            var desc = 'The Daily Garfield Comic for ' + date.getFullYear() + '-' + getMonthString(date.getMonth() + 1) + '-' + getDayString(date.getDate()) + ' brought to you by LiquidZulu.';
+            var comicEmbed = EmbedComic(message,desc,genURL(new Date(date.getTime() - 1000*60*60*4.5)).comic,genURL(new Date(date.getTime() - 1000*60*60*4.5)).comic); //      message, desc, url, link, author
+            
             message.channel.send(comicEmbed);
-          });
-          return;
-        }
-      }catch (e){console.error(e)}
       
-      if (message.content === 'SendComic' && message.author.id == '293462954240638977') {
-        
-        channels = require('./channels.json');
-        for(var g of channels.holyTexts){
-          SendComic(undefined, g[0]);
-        }
-        return;
-        
-        
-      }else if (message.content === 'SendSRoMG' && message.author.id == '293462954240638977') {
-        
-        channels = require('./channels.json');
-        for(var g of channels.SRoMG){
-          SendSRoMG(null, new Date(), undefined, g[0]); 
-        }
-        return;
-        
-        
-      }else if (message.content === 'SendAll' && message.author.id == '293462954240638977') {
-        channels = require('./channels.json');
-        for(var g of channels.holyTexts){
-          SendComic(undefined, g[0]);
-        }
-        for(var g of channels.SRoMG){
-          SendSRoMG(null, new Date(), undefined, g[0]); 
-        }
-        return;
-        
-        
-      }else if(message.content.substring(0, 2).toLowerCase == 'g.' || HGrunt.test.prefix(message)){
-        
-        var date = message.content.substring(2);
-        date = date.split('-');
-        year = date[0];
-        month = date[1];
-        day = date[2];
-        
-        var d = new Date(year + '-' + getMonthString(month) + '-' + getDayString(day));
-        var desc = 'The Daily Garfield Comic for ' + d.getFullYear() + '-' + getMonthString(d.getMonth() + 1) + '-' + getDayString(d.getDate()) + ' brought to you by LiquidZulu.';
-        if(desc !== "The Daily Garfield Comic for NaN-NaN-NaN brought to you by LiquidZulu."){
-          var comicEmbed = EmbedComic(message,desc,genURL(new Date(d.getTime()/* - 1000*60*60*7*/)).comic,genURL(new Date(d.getTime())).comic);
-          message.channel.send(comicEmbed)
-        }
-        else{
-          message.channel.send("There has been an error in parsing the date `" + message.content.substring(2) + "`\nThe $ syntax is preferred for most operations, example: `$randcomic`");
-        }
-      }
-      
-      if(message.content.toUpperCase().substring(0,2) === 'G.' && message.content.toUpperCase().substring(2, 3) !== 'T'){
-        message.content = `${message.content.toUpperCase().substring(0,2)} ${message.content.toUpperCase().substring(2)}`; // adds space for g.YYYY-MM-DD
-      }
-      var mcon = message.content.trim();
-      var cmsg = mcon.split(' ');
-      cmsg = cmsg.map(v => v.trim());
-      
-      switch(cmsg[0].toUpperCase()){
-	    
-        case config.prefix + 'SOURCE': case config.prefix + 'API':
-          message.channel.send('Source code and API info can be viewed here: https://garfield-comics.glitch.me');
-        break;
-          
-        case config.prefix + 'SEARCH':
-          case 'G.':
-
-            try {
-
-              var date = cmsg[1];
-              var format = cmsg[2];
-
-              var dmyACT = cmsg[1].split('-')
-              console.log(dmyACT);
-
-              try{var dmyFORM = cmsg[2].split('-'); var FORM = 'FORMAT'}catch(e){var FORM = 'NO_FORMAT'}
-
-              if (cmsg.length/*implies this is cmsg.0*/ == 2){var year = dmyACT[0]; var month = dmyACT[1]; var day = dmyACT[2]}//RIGHT HERE Error: TypeError: Cannot read property '0' of undefined
-
-              if(FORM == 'FORMAT'){
-
-                if(dmyFORM[0].substring(0,1).toUpperCase() == 'Y' && dmyFORM[1].substring(0,1).toUpperCase() == 'M' && dmyFORM[2].substring(0,1).toUpperCase() == 'D'){var year = dmyACT[0]; var month = dmyACT[1]; var day = dmyACT[2]}
-                if(dmyFORM[0].substring(0,1).toUpperCase() == 'M' && dmyFORM[1].substring(0,1).toUpperCase() == 'D' && dmyFORM[2].substring(0,1).toUpperCase() == 'Y'){var year = dmyACT[2]; var month = dmyACT[0]; var day = dmyACT[1]}
-                if(dmyFORM[0].substring(0,1).toUpperCase() == 'D' && dmyFORM[1].substring(0,1).toUpperCase() == 'Y' && dmyFORM[2].substring(0,1).toUpperCase() == 'M'){var year = dmyACT[1]; var month = dmyACT[2]; var day = dmyACT[0]}
-
-                if(dmyFORM[0].substring(0,1).toUpperCase() == 'D' && dmyFORM[1].substring(0,1).toUpperCase() == 'M' && dmyFORM[2].substring(0,1).toUpperCase() == 'Y'){var year = dmyACT[2]; var month = dmyACT[1]; var day = dmyACT[0]}
-                if(dmyFORM[0].substring(0,1).toUpperCase() == 'M' && dmyFORM[1].substring(0,1).toUpperCase() == 'Y' && dmyFORM[2].substring(0,1).toUpperCase() == 'D'){var year = dmyACT[0]; var month = dmyACT[2]; var day = dmyACT[1]}
-                if(dmyFORM[0].substring(0,1).toUpperCase() == 'Y' && dmyFORM[1].substring(0,1).toUpperCase() == 'D' && dmyFORM[2].substring(0,1).toUpperCase() == 'M'){var year = dmyACT[1]; var month = dmyACT[0]; var day = dmyACT[2]}
-              }
-
-              var d = new Date(year + '-' + getMonthString(month) + '-' + getDayString(day));
-              var desc = 'The Daily Garfield Comic for ' + d.getFullYear() + '-' + getMonthString(d.getMonth() + 1) + '-' + getDayString(d.getDate()) + ' brought to you by LiquidZulu.';
-              if(desc !== "The Daily Garfield Comic for NaN-NaN-NaN brought to you by LiquidZulu."){
-                var comicEmbed = EmbedComic(message,desc,genURL(new Date(d.getTime()/* - 1000*60*60*7*/)).comic,genURL(new Date(d.getTime())).comic);
-                message.channel.send(comicEmbed)
-              }
-              else{
-                message.channel.send("There has been an error in parsing the date `" + message.content.substring(2) + "`\nThe $ syntax is preferred for most operations, example: `$randcomic`");
-              }
-
-            } 
-
-            catch (e) {
-              console.error(e);
-              message.channel.send('Error: '+e);
-            }
-
-        break;
-
-
-        case config.SRoMG_prefix + 'SEARCH':
-
-            try {
-
-              if(cmsg[1].split('-').length > 1){
-
-                var date = cmsg[1];
-                var format = cmsg[2];
-
-                var dmyACT = cmsg[1].split('-')
-
-                try{var dmyFORM = cmsg[2].split('-'); var FORM = 'FORMAT'}catch(e){var FORM = 'NO_FORMAT'}
-
-                if (cmsg.length/*implies this is cmsg.0*/ == 2){var year = dmyACT[0]; var month = dmyACT[1]; var day = dmyACT[2]}//RIGHT HERE Error: TypeError: Cannot read property '0' of undefined
-
-                if(FORM == 'FORMAT'){
-
-                  if(dmyFORM[0].substring(0,1).toUpperCase() == 'Y' && dmyFORM[1].substring(0,1).toUpperCase() == 'M' && dmyFORM[2].substring(0,1).toUpperCase() == 'D'){var year = dmyACT[0]; var month = dmyACT[1]; var day = dmyACT[2]}
-                  if(dmyFORM[0].substring(0,1).toUpperCase() == 'M' && dmyFORM[1].substring(0,1).toUpperCase() == 'D' && dmyFORM[2].substring(0,1).toUpperCase() == 'Y'){var year = dmyACT[2]; var month = dmyACT[0]; var day = dmyACT[1]}
-                  if(dmyFORM[0].substring(0,1).toUpperCase() == 'D' && dmyFORM[1].substring(0,1).toUpperCase() == 'Y' && dmyFORM[2].substring(0,1).toUpperCase() == 'M'){var year = dmyACT[1]; var month = dmyACT[2]; var day = dmyACT[0]}
-
-                  if(dmyFORM[0].substring(0,1).toUpperCase() == 'D' && dmyFORM[1].substring(0,1).toUpperCase() == 'M' && dmyFORM[2].substring(0,1).toUpperCase() == 'Y'){var year = dmyACT[2]; var month = dmyACT[1]; var day = dmyACT[0]}
-                  if(dmyFORM[0].substring(0,1).toUpperCase() == 'M' && dmyFORM[1].substring(0,1).toUpperCase() == 'Y' && dmyFORM[2].substring(0,1).toUpperCase() == 'D'){var year = dmyACT[0]; var month = dmyACT[2]; var day = dmyACT[1]}
-                  if(dmyFORM[0].substring(0,1).toUpperCase() == 'Y' && dmyFORM[1].substring(0,1).toUpperCase() == 'D' && dmyFORM[2].substring(0,1).toUpperCase() == 'M'){var year = dmyACT[1]; var month = dmyACT[0]; var day = dmyACT[2]}
-                }
-
-                var d = new Date(year + '-' + getMonthString(month) + '-' + getDayString(day));
-                SendSRoMG(message, d);
-              }else{
-
-                SendSRoMG(message, cmsg[1], true);
-              }
-            } 
-
-            catch (e) {
-              console.error(e);
-              message.channel.send('Error: '+e);
-            }
-
-        break;
-
-
-        case config.SRoMG_prefix + 'JSON':
-
-            if(message.author == me){
-              console.log(cmsg)
-              readPage(`https://garfield-comics.glitch.me/~SRoMG?SRoMG_NUM=${cmsg[1]}`,   (res) => {
-                message.channel.send(`https://garfield-comics.glitch.me/~SRoMG?SRoMG_NUM=${cmsg[1]}
-
-
-
-  ${res.body}`) 
-              });
-            }
-
-        break;
-
-
-        case config.prefix + 'EMOTE':
-
-          try{message.channel.send(':_`_::' + cmsg[1] + '::_`_:')}catch(e){console.error(e); message.channel.send('Error: '+e);}
-
-        break;
-
-
-        case config.prefix + 'RANDCOMIC':
-        case 'g.random':
-
-          var caseType = 'Random Comic'
-
-            try {
-
-              var d = new Date();
-
-              var date = new Date(RandInt(267087600000, d.getTime() - 1000*60*60*4.5, seed()))
-              var desc = 'The Daily Garfield Comic for ' + date.getFullYear() + '-' + getMonthString(date.getMonth() + 1) + '-' + getDayString(date.getDate()) + ' brought to you by LiquidZulu.';
-
-              message.channel.send(EmbedComic(message,desc,genURL(date).comic,genURL(date).comic));
-            } 
-
-            catch (e) {
-              console.error(e);
-              message.channel.send('Error: '+e);
-            }
-
-        break;
-
-
-        case config.SRoMG_prefix + 'RANDCOMIC':
-
-            try {
-
-              var d = new Date();
-
-              var date = new Date(RandInt(1242691200000, d.getTime(), seed()));
-              SendSRoMG(message, date);
-
-            } 
-
-            catch (e) {
-              console.error(e);
-              message.channel.send('Error: '+e);
-            }
-
-        break;
-
-
-        case config.prefix + 'HELP':
-
-                try {
-                  message.channel.send(require('./helptext.js'));
-                }
-
-                catch (e) {
-                  console.error(e);
-                  message.channel.send('Error: '+e);
-                }
-
-        break;
-          
-        case `${config.prefix}INIT`:case `${config.SRoMG_prefix}INIT`:
-          
-          if( (message.author.id === message.guild.ownerID || message.author === me) && cmsg.length > 1){
-            channels = require('./channels.json');
-
-            switch(cmsg[1].toUpperCase()){
-              case 'GARF':
-                var newGs = [];
-                for(var g of channels.holyTexts){
-                  if(g[0] !== message.guild.id){
-                    newGs.push(g)
-                  }
-                }
-                newGs.push(
-                  [message.guild.id, message.channel.id]
-                )
-                channels.holyTexts = newGs;
-              break;
-
-              case 'SROMG':
-                var newGs = [];
-                for(var g of channels.SRoMG){
-                  if(g[0] !== message.guild.id){
-                    newGs.push(g)
-                  }
-                }
-                newGs.push(
-                  [message.guild.id, message.channel.id]
-                )
-                channels.SRoMG = newGs;
-              break;
-            }
-              
-            fs.writeFile("./channels.json", JSON.stringify(channels), (e) => {
-              if(e) {
-                message.channel.send(`An error has occurred in trying to save your preferences, please report the following error here: https://garfield-comics.glitch.me/feedback
-  \`\`\`json
-  ${e}\`\`\``);
-                return console.log(e);
-              }
-              
-              var comicNames = ['GARF', 'SROMG'];
-              if( comicNames.includes(cmsg[1].toUpperCase()) ){message.channel.send('Preferences saved')}
-              else{message.channel.send('That is an invalid comic to init, valid comics are: ' + comicNames)}
-              console.log("The file was saved!");
+            return;
+          }else if (message.content.toUpperCase() === 'SHOW SROMG' || message.content.toUpperCase() === config.prefix + 'SHOWSROMG') {
+            
+            let latest_sromg = await readPage(`http://www.mezzacotta.net/garfield/`)
+            const { document } = (new JSDOM(latest_sromg.body)).window;
+            let sromg_embed = EmbedSRoMG({
+              comic: new sromg_api.Comic(document)
             });
-          }else{
-            message.channel.send('Only the server owner can use this command');
+            message.channel.send(sromg_embed);
+            
+            return;
           }
-          
-        break;
-          
-        case `${config.prefix}CHANNELS`:
-          if(message.author.id === message.guild.ownerID){
-            message.channel.send(JSON.stringify(require('./channels.json')));
-          }
-        break;
-      }  
+        }catch (e){console.error(e)}
         
-    break;
+        if (message.content === 'SendComic' && message.author.id == '293462954240638977') {
+          
+          channels = require('./channels.json');
+          for(var g of channels.holyTexts){
+            SendComic(undefined, g[0]);
+          }
+          return;
+          
+          
+        }else if (message.content === 'SendSRoMG' && message.author.id == '293462954240638977') {
+          
+          channels = require('./channels.json');
+          let latest_sromg = await got(`http://www.mezzacotta.net/garfield/`)
+          const { DOM } = (new JSDOM(latest_sromg.body)).window;
+          let sromg_embed = EmbedSRoMG({
+            comic: new sromg_api.Comic(DOM)
+          });
+
+          for(var g of channels.SRoMG){
+            client.channels.get(g[1]).send(sromg_embed)
+          }
+          return;
+          
+          
+        }else if (message.content === 'SendAll' && message.author.id == '293462954240638977') {
+          channels = require('./channels.json');
+          for(var g of channels.holyTexts){
+            SendComic(undefined, g[0]);
+          }
+
+          let latest_sromg = await got(`http://www.mezzacotta.net/garfield/`)
+          const { DOM } = (new JSDOM(latest_sromg.body)).window;
+          let sromg_embed = EmbedSRoMG({
+            comic: new sromg_api.Comic(DOM)
+          });
+
+          for(var g of channels.SRoMG){
+            client.channels.get(g[1]).send(sromg_embed)
+          }
+          return;
+          
+          
+        }else if(message.content.substring(0, 2).toLowerCase == 'g.' || HGrunt.test.prefix(message)){
+          
+          var d = dateFormatter([].push(message.content.substring(2).split(' ')));
+          var desc = 'The Daily Garfield Comic for ' + d.getFullYear() + '-' + getMonthString(d.getMonth() + 1) + '-' + getDayString(d.getDate()) + ' brought to you by LiquidZulu.';
+          if(desc !== "The Daily Garfield Comic for NaN-NaN-NaN brought to you by LiquidZulu."){
+            var comicEmbed = EmbedComic(message,desc,genURL(new Date(d.getTime()/* - 1000*60*60*7*/)).comic,genURL(new Date(d.getTime())).comic);
+            message.channel.send(comicEmbed)
+          }
+          else{
+            message.channel.send("There has been an error in parsing the date `" + message.content.substring(2) + "`\nThe $ syntax is preferred for most operations, example: `$randcomic`");
+          }
+        }
+        
+        if(message.content.toUpperCase().substring(0,2) === 'G.' && message.content.toUpperCase().substring(2, 3) !== 'T'){
+          message.content = `${message.content.toUpperCase().substring(0,2)} ${message.content.toUpperCase().substring(2)}`; // adds space for g.YYYY-MM-DD
+        }
+        var mcon = message.content.trim();
+        var cmsg = mcon.split(' ');
+        cmsg = cmsg.map(v => v.trim());
+        
+        switch(cmsg[0].toUpperCase()){
+        
+          case config.prefix + 'SOURCE': case config.prefix + 'API':{
+            {
+              message.channel.send('Source code and API info can be viewed here: https://garfield-comics.glitch.me');
+            }
+            break;
+          }
+            
+          case config.prefix + 'SEARCH':
+          case 'G.':{
+            {
+              try {
+
+                var d = dateFormatter(cmsg);
+                var desc = 'The Daily Garfield Comic for ' + d.getFullYear() + '-' + getMonthString(d.getMonth() + 1) + '-' + getDayString(d.getDate()) + ' brought to you by LiquidZulu.';
+                if(desc !== "The Daily Garfield Comic for NaN-NaN-NaN brought to you by LiquidZulu."){
+                  var comicEmbed = EmbedComic(message,desc,genURL(new Date(d.getTime()/* - 1000*60*60*7*/)).comic,genURL(new Date(d.getTime())).comic);
+                  message.channel.send(comicEmbed)
+                }
+                else{
+                  message.channel.send("There has been an error in parsing the date `" + message.content.substring(2) + "`\nThe $ syntax is preferred for most operations, example: `$randcomic`");
+                }
+
+              } 
+
+              catch (e) {
+                console.error(e);
+                message.channel.send('Error: '+e);
+              }
+            }
+            break;
+          }
+
+
+          case config.SRoMG_prefix + 'SEARCH':{
+            {
+              try {
+                
+                let comic;
+                
+                if(cmsg[1].length == 4){
+                  comic = await META.getComic(cmsg[1])
+                }
+                else{
+                  comic = await META.getComic(GetSRoMG_Number(dateFormatter(cmsg)))
+                }
+                message.channel.send(EmbedSRoMG({
+                  comic: comic,
+                  desc: `SRoMG Comic #${comic.number} brought to you by LiquidZulu.`
+                }))
+              } 
+
+              catch (e) {
+                console.error(e);
+                message.channel.send('Error: '+e);
+              }
+            }
+            break;
+          } 
+
+
+          case config.prefix + 'RANDCOMIC':
+          case 'g.random':{
+            {
+              try {
+
+                var d = new Date();
+
+                var date = new Date(RandInt(267087600000, d.getTime() - 1000*60*60*4.5, seed()))
+                var desc = 'The Daily Garfield Comic for ' + date.getFullYear() + '-' + getMonthString(date.getMonth() + 1) + '-' + getDayString(date.getDate()) + ' brought to you by LiquidZulu.';
+
+                message.channel.send(EmbedComic(message,desc,genURL(date).comic,genURL(date).comic));
+              } 
+
+              catch (e) {
+                console.error(e);
+                message.channel.send('Error: '+e);
+              }
+            }
+            break;
+          }
+
+          case config.SRoMG_prefix + 'RANDCOMIC':{
+            {
+              try {
+
+                let rand_sromg = await got(`http://www.mezzacotta.net/garfield/?comic=0`)
+                const { document } = (new JSDOM(rand_sromg.body)).window;
+                let comic = new sromg_api.Comic(document);
+
+                message.channel.send(EmbedSRoMG({
+                  comic: comic,
+                  desc: `SRoMG Comic #${comic.number} brought to you by LiquidZulu.`
+                }))
+
+              } 
+
+              catch (e) {
+                console.error(e);
+                message.channel.send('Error: '+e);
+              }
+            }
+            break;
+          }
+
+          case config.prefix + 'HELP':{
+            {
+              try {
+                message.channel.send(require('./helptext.js'));
+              }
+
+              catch (e) {
+                console.error(e);
+                message.channel.send('Error: '+e);
+              }
+            }
+            break;
+          }
+
+          case `${config.prefix}INIT`:
+          case `${config.SRoMG_prefix}INIT`:
+            
+            if( (message.author.id === message.guild.ownerID || message.author === me) && cmsg.length > 1){
+              channels = require('./channels.json');
+
+              switch(cmsg[1].toUpperCase()){
+                case 'GARF':
+                  var newGs = [];
+                  for(var g of channels.holyTexts){
+                    if(g[0] !== message.guild.id){
+                      newGs.push(g)
+                    }
+                  }
+                  newGs.push(
+                    [message.guild.id, message.channel.id]
+                  )
+                  channels.holyTexts = newGs;
+                break;
+
+                case 'SROMG':
+                  var newGs = [];
+                  for(var g of channels.SRoMG){
+                    if(g[0] !== message.guild.id){
+                      newGs.push(g)
+                    }
+                  }
+                  newGs.push(
+                    [message.guild.id, message.channel.id]
+                  )
+                  channels.SRoMG = newGs;
+                break;
+              }
+                
+              fs.writeFile("./channels.json", JSON.stringify(channels), (e) => {
+                if(e) {
+                  message.channel.send(`An error has occurred in trying to save your preferences, please report the following error here: https://garfield-comics.glitch.me/feedback
+    \`\`\`json
+    ${e}\`\`\``);
+                  return console.log(e);
+                }
+                
+                var comicNames = ['GARF', 'SROMG'];
+                if( comicNames.includes(cmsg[1].toUpperCase()) ){message.channel.send('Preferences saved')}
+                else{message.channel.send('That is an invalid comic to init, valid comics are: ' + comicNames)}
+                console.log("The file was saved!");
+              });
+            }else{
+              message.channel.send('Only the server owner can use this command');
+            }
+            
+          break;
+            
+          case `${config.prefix}CHANNELS`:
+            if(message.author.id === message.guild.ownerID){
+              message.channel.send(JSON.stringify(require('./channels.json')));
+            }
+          break;
+        }  
+      }
+      break;
+    }
       
     case 'dm':
       
@@ -953,8 +790,8 @@ app.get('/~SRoMG*', (req, res) => {
       var dateArr = req.query.date.split('-'),
         year = dateArr[0],
         month = dateArr[1],
-        day = dateArr[2];
-      var date = new Date(year + '-' + getMonthString(month) + '-' + getDayString(day));
+        day = dateArr[2],
+        date = new Date(year + '-' + getMonthString(month) + '-' + getDayString(day));
     }else if(typeof req.query.date === 'string' && req.query.date.substring(0, 1) === '"'){
       date = new Date(req.query.date.substring(1, req.query.date.length - 1));
       console.log(date);
