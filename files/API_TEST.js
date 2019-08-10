@@ -11,7 +11,7 @@ SEND OBJECT TO DISCORD`
 var Eris = `// Eris example
 //  NOTE: I dont use Eris so there may well be errors here, message me if you have issues
 
-function readPage(link, _cb) {
+async function readPage(link, _cb) {
   const prom = got(link);
   if(_cb) prom.then(_cb) 
   else return prom;
@@ -43,7 +43,7 @@ const Discord = require(\'discord.js\');
 const client = new Discord.Client();
 client.login(TOKEN);
 
-function readPage(link, _cb) {
+async function readPage(link, _cb) {
   const prom = got(link);
   if(_cb) prom.then(_cb) 
   else return prom;
