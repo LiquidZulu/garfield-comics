@@ -11,15 +11,15 @@ SEND OBJECT TO DISCORD`
 var Eris = `// Eris example
 //  NOTE: I dont use Eris so there may well be errors here, message me if you have issues
 
-async function readPage(link, _callback){
-	const got = require('got');
-	var result = await got(link);
-	_callback(result);
+function readPage(link, _cb) {
+  const prom = got(link);
+  if(_cb) prom.then(_cb) 
+  else return prom;
 }
 
 function APITESTER(msg){
 	readPage(\`https://garfield-comics.glitch.me/~SRoMG/?date="\${new Date()}"\`,   (result) => { // has to have '"' on either side of date object, YYYY-MM-DD does not need this
-		const embed = JSON.parse(result.body);    // parses JSON response into object rather than JSON string
+		const { embed } = JSON.parse(result.body);    // parses JSON response into object rather than JSON string
     bot.createMessage(msg.channel.id, { embed });    // posts the object as Discord embed object
 	});
 }
@@ -36,7 +36,32 @@ bot.on("messageCreate", (msg) => {
 bot.connect();`
 
 module.exports = {
-  discord_js: '// Discord.js example\n// NOTE THE ASYNC STRUCTURE\n\nconst Discord = require(\'discord.js\');\nconst client = new Discord.Client();\nclient.login(TOKEN);\n\nasync function readPage(link, _callback){\n\tconst got = require(\'got\');\n\tvar result = await got(link);\n\t_callback(result);\n}\n\nfunction APITESTER(msg){\n\treadPage(`https://garfield-comics.glitch.me/~SRoMG/?date="${new Date()}"`,   (result) => { // has to have \'"\' on either side of date object, YYYY-MM-DD does not need this\n\t\tconst embed = JSON.parse(result.body);    // parses JSON response into object rather than JSON string\n\t\tmsg.channel.send({ embed })    // posts the object as Discord embed object\n\t});\n}\n\n\nclient.on("message", async message => {\n\n\tif(message.content == "test") APITESTER(message);\n\n});\n\n\n\n\n',
+  discord_js: `// Discord.js example
+// NOTE THE ASYNC STRUCTURE
+
+const Discord = require(\'discord.js\');
+const client = new Discord.Client();
+client.login(TOKEN);
+
+function readPage(link, _cb) {
+  const prom = got(link);
+  if(_cb) prom.then(_cb) 
+  else return prom;
+}
+
+function APITESTER(msg){
+  readPage(\`https://garfield-comics.glitch.me/~SRoMG/?date=\${new Date()}\`,   (result) => { 
+    const { embed } = JSON.parse(result.body);    // parses JSON response into object rather than JSON string
+    msg.channel.send({ embed })    // posts the object as Discord embed object
+  });
+}
+
+
+client.on("message", async message => {
+
+  if(message.content == "test") APITESTER(message);
+
+});`,
   discord_io: discord_io,
   eris: Eris,
   pseudocode: pseudocode

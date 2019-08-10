@@ -14,11 +14,12 @@ const FLAGS         = sromg_api.FLAGS;
 const { JSDOM }     = require('jsdom');
 const client        = new Discord.Client();
 const token         = process.env.TOKEN;
-var turndown        = require('turndown')
+const turndown      = require('turndown');
+const util          = require('util');
  
 
 // login
-client.login(token);
+//client.login(token);
 var ts = new turndown({
   hr: '\n',
   bulletListMarker: '-',
@@ -26,6 +27,19 @@ var ts = new turndown({
   fence: '```',
   emDelimiter: '*'
 })
+
+
+// prototypes
+  
+Date.prototype.stdTimezoneOffset = function () {
+  var jan = new Date(this.getFullYear(), 0, 1);
+  var jul = new Date(this.getFullYear(), 6, 1);
+  return Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+}
+
+Date.prototype.isDstObserved = function () {
+    return this.getTimezoneOffset() < this.stdTimezoneOffset();
+}
 
 
 /**
@@ -125,10 +139,8 @@ function SendComic(message, guild){
 }
 
 
-function CheckTime(comic){
+async function CheckTime(comic){
   channels = require('./channels.json');
-  //client.channels.get(channels.private).send('Time is ' + comic.time)
-  //client.channels.get(channels.private).send('GenTime() = ' + GenTime() + '\ncomic = time:' + comic.time + ', SRoMG:' + comic.SRoMG)
   if (GenTime() === comic.time){
     for(var g of channels.holyTexts){
       SendComic(undefined, g[0]);
@@ -136,25 +148,22 @@ function CheckTime(comic){
       SendComic();
   }
   if (GenTime() === comic.SRoMG_time){
+    let latest_sromg = await got(`http://www.mezzacotta.net/garfield/`)
+    const { document } = (new JSDOM(latest_sromg.body)).window;
+    let sromg_embed = EmbedSRoMG({
+      comic: new sromg_api.Comic(document)
+    });
+
     for(var g of channels.SRoMG){
-      SendSRoMG(null, new Date(), undefined, g[0]); 
-    } client.channels.get(channels.private).send('SENDING SRoMG')
-      SendSRoMG(null, new Date()); 
+      client.channels.get(g[1]).send(sromg_embed)
+    } 
+    
+    client.channels.get(channels.private).send('SENDING SRoMG')
   }
 }
 
 
 setInterval(async function ComicTimer() {
-  
-  Date.prototype.stdTimezoneOffset = function () {
-    var jan = new Date(this.getFullYear(), 0, 1);
-    var jul = new Date(this.getFullYear(), 6, 1);
-    return Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
-  }
-  
-  Date.prototype.isDstObserved = function () {
-      return this.getTimezoneOffset() < this.stdTimezoneOffset();
-  }
   
   var today = new Date();
   if (today.isDstObserved()) { 
@@ -389,9 +398,9 @@ client.on('message', async message => {
           
           channels = require('./channels.json');
           let latest_sromg = await got(`http://www.mezzacotta.net/garfield/`)
-          const { DOM } = (new JSDOM(latest_sromg.body)).window;
+          const { document } = (new JSDOM(latest_sromg.body)).window;
           let sromg_embed = EmbedSRoMG({
-            comic: new sromg_api.Comic(DOM)
+            comic: new sromg_api.Comic(document)
           });
 
           for(var g of channels.SRoMG){
@@ -407,9 +416,9 @@ client.on('message', async message => {
           }
 
           let latest_sromg = await got(`http://www.mezzacotta.net/garfield/`)
-          const { DOM } = (new JSDOM(latest_sromg.body)).window;
+          const { document } = (new JSDOM(latest_sromg.body)).window;
           let sromg_embed = EmbedSRoMG({
-            comic: new sromg_api.Comic(DOM)
+            comic: new sromg_api.Comic(document)
           });
 
           for(var g of channels.SRoMG){
@@ -780,59 +789,47 @@ app.post('/~POST/', (req, res) => {
   res.send(`Content received, thank you for the feedback.`);
 });
 
-app.get('/~SRoMG*', (req, res) => {
+app.get('/~SRoMG*', async (req, res) => {
   
-  foo.OpenDM(me, 'SRoMG JSON request', foo.DM)
-  var url = req.query.url;
+  let valid = true;
   
-  if(!url){
-    if(typeof req.query.date === 'string' && req.query.date.substring(0, 1) !== '"'){
-      var dateArr = req.query.date.split('-'),
-        year = dateArr[0],
-        month = dateArr[1],
-        day = dateArr[2],
-        date = new Date(year + '-' + getMonthString(month) + '-' + getDayString(day));
-    }else if(typeof req.query.date === 'string' && req.query.date.substring(0, 1) === '"'){
-      date = new Date(req.query.date.substring(1, req.query.date.length - 1));
-      console.log(date);
-    }
-  
-    var SRoMG_NUM = req.query.SRoMG_NUM;
-    try{if(!SRoMG_NUM){var SRoMG_URL = genURL(new Date(date.getTime()/* - 1000*60*60*11*/));}
-    else{var SRoMG_URL = {
-      SRoMG: ("http://www.mezzacotta.net/garfield/?comic=" + SRoMG_NUM),
-      SRoMG_IMG: ('http://www.mezzacotta.net/garfield/comics/' + SRoMG_NUM + '.png')
-    }}}catch(e){console.log(e)}
-  }else{
-    if((/.png/g).test(url.toLowerCase())){
-      var PNGmatch = url.toLowerCase().search(/.png/g);
-      var SRoMG_NUM = url.substring(PNGmatch - 4, PNGmatch);
+  // foo.OpenDM(me, 'SRoMG JSON request', foo.DM)
+  (async () => {
+    
+    let comic = await META.getComic((() => {
       
-      var SRoMG_URL = {
-        SRoMG: ("http://www.mezzacotta.net/garfield/?comic=" + SRoMG_NUM),
-        SRoMG_IMG: ('http://www.mezzacotta.net/garfield/comics/' + SRoMG_NUM + '.png')
+      let n = 0;
+      if(!!req.query.comic){
+          n = Number(req.query.comic)
       }
-    }else{
-      var COMICmatch = url.toLowerCase().search(/\?comic=/g);
-      var SRoMG_NUM = url.substring(COMICmatch + 7, COMICmatch + 7 + 4);
-      
-      var SRoMG_URL = {
-        SRoMG: ("http://www.mezzacotta.net/garfield/?comic=" + SRoMG_NUM),
-        SRoMG_IMG: ('http://www.mezzacotta.net/garfield/comics/' + SRoMG_NUM + '.png')
+      else if(!!req.query.url){
+        n = Number(req.query.url.split('=')[1])
       }
-    }
-  }
-  var desc = 'Be sure to check out the daily SRoMG comic';
-  var url = SRoMG_URL.SRoMG_IMG;
-  var link = SRoMG_URL.SRoMG;
-  
-  readPage(link,   (result) => {
-    var meta = getMeta(result.body)
-    if(!SRoMG_NUM){desc = 'The daily SRoMG comic for ' + date.getFullYear() + '-' + getMonthString(date.getMonth() + 1) + '-' + getDayString(date.getDate()) + ' brought to you by LiquidZulu.';}
-    else{desc = 'SRoMG comic ' + SRoMG_NUM + ' brought to you by LiquidZulu'} // note improve this, you were lazy by not extracting date from SRoMG comic No., you already did the work in genURL()
-    res.send(EmbedComic(null, desc, url, link, meta));
-  });
+      else{
+        if(!!req.query.date){
+          n = GetSRoMG_Number(new Date(req.query.date))
+        }
+        else{
+          valid = false
+          return false
+        }
+      }
+      return n
+    })())
 
+    if(!valid){
+      res.send(`Error: invalid query parameters: <pre>${util.inspect(req.query)}</pre>`)
+    }
+    
+    else{
+      res.send({
+        data: comic,
+        embed: EmbedSRoMG({
+          comic: comic
+        })
+      });
+    }
+  })()
   
 });
 
