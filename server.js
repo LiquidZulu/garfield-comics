@@ -19,7 +19,7 @@ const util          = require('util');
  
 
 // login
-//client.login(token);
+client.login(token);
 var ts = new turndown({
   hr: '\n',
   bulletListMarker: '-',
@@ -62,7 +62,6 @@ function getDayString(day){if(day<10){day = '0' + day;}; return day}
 
 function genURL(time){
   try{
-    console.log('genURL')
     var day = getDayString(time.getDate());
     var month = getMonthString(time.getMonth() + 1);
     var year = time.getFullYear();
@@ -143,7 +142,12 @@ async function CheckTime(comic){
   channels = require('./channels.json');
   if (GenTime() === comic.time){
     for(var g of channels.holyTexts){
-      SendComic(undefined, g[0]);
+      try{
+        SendComic(undefined, g[0]);
+      }
+      catch(e){
+        console.log(`Failed CheckTime at ${g}`)
+      }
     } client.channels.get(channels.private).send('SENDING COMIC')
       SendComic();
   }
@@ -155,7 +159,12 @@ async function CheckTime(comic){
     });
 
     for(var g of channels.SRoMG){
-      client.channels.get(g[1]).send(sromg_embed)
+      try{
+        client.channels.get(g[1]).send(sromg_embed)
+      }
+      catch(e){
+        console.log(`Failed CheckTime at ${g}`)
+      }
     } 
     
     client.channels.get(channels.private).send('SENDING SRoMG')
@@ -185,8 +194,6 @@ setInterval(async function ComicTimer() {
 
 
 function EmbedComic(message, desc, url, link, meta){
-  
-  console.log('EmbedComic')
   
   if (url==link){
   const embed = new Discord.RichEmbed()
@@ -230,6 +237,14 @@ function EmbedComic(message, desc, url, link, meta){
 }
 
 
+function limitStr(s, l){
+  if(s.length > l){
+    return s.substring(0,l-3) + '...'
+  }
+  else return s;
+}
+  
+  
 function EmbedSRoMG(ARGS){
 
   const comic = ARGS.comic
@@ -238,20 +253,32 @@ function EmbedSRoMG(ARGS){
     IMG: comic.image.src,
     PAGE: `http://www.mezzacotta.net/garfield/?comic=${comic.number}`
   }
+
+  const LIMITS = {
+      RICH_EMBED: {
+          TITLE:       256,
+          DESCRIPTION: 2048,
+          AUTHOR:      256,
+          FIELD: {
+              NAME:    256,
+              VALUE:   1024
+          }
+      }
+  }
   
   const embed = new Discord.RichEmbed()
-    .setTitle((() => { if(typeof ARGS["Title"] === typeof ""){return ARGS["Title"]}else return `No. ${comic.number}: ${comic.name}`})())
-    .setAuthor((() => { if(typeof ARGS["Author"] === typeof ""){return ARGS["Author"]}else return `By ${comic.author.name}`})())
-    .setColor(0xFF9900)
-    .setDescription((() => { if(typeof ARGS["Description"] === typeof ""){return ARGS["Description"]}else return `Be sure to check out the daily SRoMG comic`})())
-    .setTimestamp()
-    .setImage(SRoMG_Links.IMG)
-    .setFooter('Made by LiquidZulu  //  Licenced under Creative Commons Attribution-Noncommercial-Share Alike 3.0 Unported Licence ')
-    .setURL(SRoMG_Links.PAGE)
-    .addField('\nAuthor URL:', `http://www.mezzacotta.net/garfield/author.php?author=${comic.author.number}`)
-    .addField('\nThe Author Writes:', ts.turndown(comic.authorWrites))
-    .addField('\nTranscription:', ts.turndown(comic.transcription))
-    .addField('\nOriginal Strip(s):', (() => {
+    .setTitle      (limitStr((() => { if(typeof ARGS["Title"] === typeof ""){return ARGS["Title"]}else return `No. ${comic.number}: ${comic.name}`})(), LIMITS.RICH_EMBED.TITLE))
+    .setAuthor     (limitStr((() => { if(typeof ARGS["Author"] === typeof ""){return ARGS["Author"]}else return `By ${comic.author.name}`})(), LIMITS.RICH_EMBED.AUTHOR))
+    .setColor      (0xFF9900)
+    .setDescription(limitStr((() => { if(typeof ARGS["Description"] === typeof ""){return ARGS["Description"]}else return `Be sure to check out the daily SRoMG comic`})(), LIMITS.RICH_EMBED.DESCRIPTION))
+    .setTimestamp  ()
+    .setImage      (SRoMG_Links.IMG)
+    .setFooter     ('Made by LiquidZulu  //  Licenced under Creative Commons Attribution-Noncommercial-Share Alike 3.0 Unported Licence ')
+    .setURL        (SRoMG_Links.PAGE)
+    .addField      ('\nAuthor URL:', `http://www.mezzacotta.net/garfield/author.php?author=${comic.author.number}`)
+    .addField      ('\nThe Author Writes:', limitStr(ts.turndown(comic.authorWrites), LIMITS.RICH_EMBED.FIELD.VALUE))
+    .addField      ('\nTranscription:', limitStr(ts.turndown(comic.transcription), LIMITS.RICH_EMBED.FIELD.VALUE))
+    .addField      ('\nOriginal Strip(s):', limitStr((() => {
       let strips = '';
       for(let strip of comic.originalStrips){
         strips += `[${strip.strip}](${strip.href}) `
@@ -260,7 +287,7 @@ function EmbedSRoMG(ARGS){
         return "No original stips found"
       }
       return strips
-    })());
+    })(), LIMITS.RICH_EMBED.FIELD.VALUE));
   
   return embed;
 }
@@ -316,9 +343,19 @@ console.log('before ready')
 client.on('ready', () => { 
   console.log('I am ready!');
   me = client.users.find('id', '293462954240638977')
-  activities = {time: 15000};
+  activities = {
+    time: 15000
+  };
   setInterval(() => {
-    activities.arr = [`Running on ${client.guilds.array().length} servers.`, `Serving ${client.users.array().length} users.`, '$help, $$ for SRoMG', 'https://garfield-comics.glitch.me/', 'By LiquidZulu | http://liquidzulu.xyz', `Online since ${client.readyAt}.`, 'with SRoMG API']
+    activities.arr = [
+      `Running on ${client.guilds.array().length} servers.`, 
+      `Serving ${client.users.array().length} users.`, 
+      '$help, $$ for SRoMG', 
+      'https://garfield-comics.glitch.me/', 
+      'By LiquidZulu | http://liquidzulu.xyz', 
+      `Online since ${client.readyAt}.`, 
+      'with SRoMG API'
+    ]
     client.user.setActivity(activities.arr[currentIndex]);
     if (currentIndex < activities.arr.length - 1) currentIndex ++; else currentIndex = 0;
   }, activities.time)
@@ -389,7 +426,11 @@ client.on('message', async message => {
           
           channels = require('./channels.json');
           for(var g of channels.holyTexts){
-            SendComic(undefined, g[0]);
+            try{
+              SendComic(undefined, g[0]);
+            }catch(e){
+              console.log(`Filed SendComic at: ${g}`)
+            }
           }
           return;
           
@@ -404,7 +445,11 @@ client.on('message', async message => {
           });
 
           for(var g of channels.SRoMG){
-            client.channels.get(g[1]).send(sromg_embed)
+            try{
+              client.channels.get(g[1]).send(sromg_embed)
+            }catch(e){
+              console.log(`Filed SendSRoMG at: ${g}`)
+            }
           }
           return;
           
@@ -412,7 +457,11 @@ client.on('message', async message => {
         }else if (message.content === 'SendAll' && message.author.id == '293462954240638977') {
           channels = require('./channels.json');
           for(var g of channels.holyTexts){
-            SendComic(undefined, g[0]);
+            try{
+              SendComic(undefined, g[0]);
+            }catch(e){
+              console.log(`Filed SendComic at: ${g}`)
+            }
           }
 
           let latest_sromg = await got(`http://www.mezzacotta.net/garfield/`)
@@ -422,7 +471,11 @@ client.on('message', async message => {
           });
 
           for(var g of channels.SRoMG){
-            client.channels.get(g[1]).send(sromg_embed)
+            try{
+              client.channels.get(g[1]).send(sromg_embed)
+            }catch(e){
+              console.log(`Filed SendSRoMG at: ${g}`)
+            }
           }
           return;
           
