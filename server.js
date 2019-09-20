@@ -16,6 +16,7 @@ const client        = new Discord.Client();
 const token         = process.env.TOKEN;
 const turndown      = require('turndown');
 const util          = require('util');
+const LIMITS        = config.LIMITS;
  
 
 // login
@@ -252,18 +253,6 @@ function EmbedSRoMG(ARGS){
   const SRoMG_Links = {
     IMG: comic.image.src,
     PAGE: `http://www.mezzacotta.net/garfield/?comic=${comic.number}`
-  }
-
-  const LIMITS = {
-      RICH_EMBED: {
-          TITLE:       256,
-          DESCRIPTION: 2048,
-          AUTHOR:      256,
-          FIELD: {
-              NAME:    256,
-              VALUE:   1024
-          }
-      }
   }
   
   const embed = new Discord.RichEmbed()
