@@ -120,7 +120,7 @@ function SendComic(message, guild){
     return;
   }
   
-  var desc = 'Be sure to check out the daily Garfield comic.';
+  var desc = 'Be sure to check out the daily Garfield comic.\nI think this comic is really cool (:, and that is my review.';
   var d = new Date();
   var url = genURL(new Date(d.getTime() - 1000*60*60*4.5));
   var embed = EmbedComic(message,desc, url.comic, url.comic);
@@ -133,7 +133,7 @@ function SendComic(message, guild){
       var year = d.getFullYear();
       const twitter = require('./twitter.js');
       const twit = twitter;
-      twit.postImg(url.comic, `Be sure to check out the daily Garfield comic for ${year}-${month}-${day}`, `Garfield Comic for ${year}-${month}-${day}`);
+      twit.postImg(url.comic, `Be sure to check out the daily Garfield comic for ${year}-${month}-${day}`, `Garfield Comic for ${year}-${month}-${day}\nI think this comic is really cool (:, and that is my review.`);
     }catch(e){console.log(e)}
   }
 }
@@ -392,7 +392,7 @@ client.on('message', async message => {
           if (message.content.toUpperCase() === 'SHOW COMIC' || message.content.toUpperCase() === config.prefix + 'SHOWCOMIC'|| message.content.toUpperCase() === config.SRoMG_prefix + 'SHOWCOMIC' || message.content.toUpperCase() === 'G.TODAY' || HGrunt.test.today(message)) {
       
             var date = new Date();
-            var desc = 'The Daily Garfield Comic for ' + date.getFullYear() + '-' + getMonthString(date.getMonth() + 1) + '-' + getDayString(date.getDate()) + ' brought to you by LiquidZulu.';
+            var desc = 'The Daily Garfield Comic for ' + date.getFullYear() + '-' + getMonthString(date.getMonth() + 1) + '-' + getDayString(date.getDate()) + ' brought to you by LiquidZulu.\nI think this comic is really cool (:, and that is my review.';
             var comicEmbed = EmbedComic(message,desc,genURL(new Date(date.getTime() - 1000*60*60*4.5)).comic,genURL(new Date(date.getTime() - 1000*60*60*4.5)).comic); //      message, desc, url, link, author
             
             message.channel.send(comicEmbed);
@@ -472,8 +472,8 @@ client.on('message', async message => {
         }else if(message.content.substring(0, 2).toLowerCase == 'g.' || HGrunt.test.prefix(message)){
           
           var d = dateFormatter([].push(message.content.substring(2).split(' ')));
-          var desc = 'The Daily Garfield Comic for ' + d.getFullYear() + '-' + getMonthString(d.getMonth() + 1) + '-' + getDayString(d.getDate()) + ' brought to you by LiquidZulu.';
-          if(desc !== "The Daily Garfield Comic for NaN-NaN-NaN brought to you by LiquidZulu."){
+          var desc = 'The Daily Garfield Comic for ' + d.getFullYear() + '-' + getMonthString(d.getMonth() + 1) + '-' + getDayString(d.getDate()) + ' brought to you by LiquidZulu.\nI think this comic is really cool (:, and that is my review.';
+          if(desc !== "The Daily Garfield Comic for NaN-NaN-NaN brought to you by LiquidZulu.\nI think this comic is really cool (:, and that is my review."){
             var comicEmbed = EmbedComic(message,desc,genURL(new Date(d.getTime()/* - 1000*60*60*7*/)).comic,genURL(new Date(d.getTime())).comic);
             message.channel.send(comicEmbed)
           }
@@ -504,8 +504,8 @@ client.on('message', async message => {
               try {
 
                 var d = dateFormatter(cmsg);
-                var desc = 'The Daily Garfield Comic for ' + d.getFullYear() + '-' + getMonthString(d.getMonth() + 1) + '-' + getDayString(d.getDate()) + ' brought to you by LiquidZulu.';
-                if(desc !== "The Daily Garfield Comic for NaN-NaN-NaN brought to you by LiquidZulu."){
+                var desc = 'The Daily Garfield Comic for ' + d.getFullYear() + '-' + getMonthString(d.getMonth() + 1) + '-' + getDayString(d.getDate()) + ' brought to you by LiquidZulu.\nI think this comic is really cool (:, and that is my review.';
+                if(desc !== "The Daily Garfield Comic for NaN-NaN-NaN brought to you by LiquidZulu.\nI think this comic is really cool (:, and that is my review."){
                   var comicEmbed = EmbedComic(message,desc,genURL(new Date(d.getTime()/* - 1000*60*60*7*/)).comic,genURL(new Date(d.getTime())).comic);
                   message.channel.send(comicEmbed)
                 }
@@ -559,7 +559,7 @@ client.on('message', async message => {
                 var d = new Date();
 
                 var date = new Date(RandInt(267087600000, d.getTime() - 1000*60*60*4.5, seed()))
-                var desc = 'The Daily Garfield Comic for ' + date.getFullYear() + '-' + getMonthString(date.getMonth() + 1) + '-' + getDayString(date.getDate()) + ' brought to you by LiquidZulu.';
+                var desc = 'The Daily Garfield Comic for ' + date.getFullYear() + '-' + getMonthString(date.getMonth() + 1) + '-' + getDayString(date.getDate()) + ' brought to you by LiquidZulu.\nI think this comic is really cool (:, and that is my review.';
 
                 message.channel.send(EmbedComic(message,desc,genURL(date).comic,genURL(date).comic));
               } 
