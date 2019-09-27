@@ -44,7 +44,7 @@ module.exports = (`
     <center>
       <a href='${meta.source}' class='sourceURL'>Source Code</a>
       <div class='desc'>
-        <p>Garfield Comics is a bot written in node using <a href='https://discord.js.org/#/'>Discord.js</a> and <a href='https://www.npmjs.com/package/twit'>Twit</a> by <a href='http://liquidzulu.xyz/'>LiquidZulu</a>. The bot has the capability to automatically post the daily Garfield comic and the daily <a href='http://www.mezzacotta.net/garfield/about.php'>SRoMG</a> comic through the use of a custom built and unique (as of writing this) API. In addition to this, the bot has a multitude of commands for finding entertaining comics as described in the helptext below or by typing '$help' in a channel the bot can message.</p>
+        <p>Garfield Comics is a bot written in node using <a href='https://discord.js.org/#/'>Discord.js</a> and <a href='https://www.npmjs.com/package/twit'>Twit</a> by <a href='http://liquidzulu.xyz/'>LiquidZulu</a>. The bot has the capability to automatically post the daily Garfield comic and the daily <a href='http://www.mezzacotta.net/garfield/about.php'>SRoMG</a> comic through the use of a custom built and unique (as of writing this) API. In addition to this, the bot has a multitude of commands for finding entertaining comics as described in the helptext below or by typing '$help' in a channel the bot can message.<br/><br/>This bot is made and intended to be used to share my review of each comic and for you and your friends to share their reviews of each comic (:</p>
       </div>
       <a href='./feedback' class='feedbackURL'>Send Me Feedback or Get Support</a><br/><br/>
       <a href='./API' class='feedbackURL'>API Reference</a>
